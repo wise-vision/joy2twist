@@ -23,7 +23,9 @@
         angular_z: "A2" # Right joystick
         linear_x: "A1" # Left joystick
         linear_y: "A0" # Left joystick
+        linear_z_up: "A4" # Right trigger (RT) - for going up
+        linear_z_down: "A5" # Left trigger (LT) - for going down
       dead_man_switch: "B6" # LB
-      fast_mode: "B3" # RT
-      slow_mode: "B0" # RB
+      fast_mode: "B3" # Y button
+      slow_mode: "B0" # A button
 

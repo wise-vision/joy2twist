@@ -29,6 +29,8 @@ struct RawInputIndex
   std::string angular_z;
   std::string linear_x;
   std::string linear_y;
+  std::string linear_z_up;
+  std::string linear_z_down;
 
   std::string dead_man_switch;
   std::string fast_mode;
@@ -44,6 +46,8 @@ struct InputIndex
   JoyInput angular_z;
   JoyInput linear_x;
   JoyInput linear_y;
+  JoyInput linear_z_up;
+  JoyInput linear_z_down;
 
   JoyInput dead_man_switch;
   JoyInput fast_mode;

@@ -52,6 +52,8 @@ void Joy2TwistNode::declare_parameters()
   this->declare_parameter<std::string>("input_index_map.axis.angular_z", "A2");
   this->declare_parameter<std::string>("input_index_map.axis.linear_x", "A1");
   this->declare_parameter<std::string>("input_index_map.axis.linear_y", "A0");
+  this->declare_parameter<std::string>("input_index_map.axis.linear_z_up", "A5");
+  this->declare_parameter<std::string>("input_index_map.axis.linear_z_down", "A6");
   this->declare_parameter<std::string>("input_index_map.dead_man_switch", "B4");
   this->declare_parameter<std::string>("input_index_map.fast_mode", "B7");
   this->declare_parameter<std::string>("input_index_map.slow_mode", "B5");
@@ -82,6 +84,8 @@ void Joy2TwistNode::load_parameters()
   this->get_parameter<std::string>("input_index_map.axis.angular_z", raw_input_index.angular_z);
   this->get_parameter<std::string>("input_index_map.axis.linear_x", raw_input_index.linear_x);
   this->get_parameter<std::string>("input_index_map.axis.linear_y", raw_input_index.linear_y);
+  this->get_parameter<std::string>("input_index_map.axis.linear_z_up", raw_input_index.linear_z_up);
+  this->get_parameter<std::string>("input_index_map.axis.linear_z_down", raw_input_index.linear_z_down);
   this->get_parameter<std::string>(
     "input_index_map.dead_man_switch", raw_input_index.dead_man_switch);
   this->get_parameter<std::string>("input_index_map.fast_mode", raw_input_index.fast_mode);
@@ -100,6 +104,8 @@ void Joy2TwistNode::parse_joy_inputs(const RawInputIndex & raw_input_index)
   input_index_.angular_z = JoyInput::from_string(raw_input_index.angular_z);
   input_index_.linear_x = JoyInput::from_string(raw_input_index.linear_x);
   input_index_.linear_y = JoyInput::from_string(raw_input_index.linear_y);
+  input_index_.linear_z_up = JoyInput::from_string(raw_input_index.linear_z_up);
+  input_index_.linear_z_down = JoyInput::from_string(raw_input_index.linear_z_down);
   input_index_.dead_man_switch = JoyInput::from_string(raw_input_index.dead_man_switch);
   input_index_.fast_mode = JoyInput::from_string(raw_input_index.fast_mode);
   input_index_.slow_mode = JoyInput::from_string(raw_input_index.slow_mode);
@@ -170,6 +176,35 @@ void Joy2TwistNode::convert_joy_to_twist(const MsgJoy::SharedPtr joy_msg, MsgTwi
   twist_msg.angular.z = angular_velocity_factor * get_joy_input(joy_msg, input_index_.angular_z);
   twist_msg.linear.x = linear_velocity_factor * get_joy_input(joy_msg, input_index_.linear_x);
   twist_msg.linear.y = linear_velocity_factor * get_joy_input(joy_msg, input_index_.linear_y);
+  
+  // Handle linear.z for drone up/down control
+  float z_up_raw = get_joy_input(joy_msg, input_index_.linear_z_up);
+  float z_down_raw = get_joy_input(joy_msg, input_index_.linear_z_down);
+  
+  // Debug output - always show to help diagnose the issue
+  RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000, "Raw trigger values - RT (up): %.3f, LT (down): %.3f", z_up_raw, z_down_raw);
+  
+  // Xbox triggers range from -1.0 (not pressed) to +1.0 (fully pressed)
+  // Simple approach: normalize to 0.0-1.0, then apply desired output range
+  
+  // Normalize triggers: -1.0 -> 0.0, +1.0 -> 1.0
+  float z_up_normalized = -(z_up_raw - 1.0f) * 0.5f; // Convert -1.0 to +1.0 -> 0.0 to 1.0
+  float z_down_normalized = (z_down_raw - 1.0f) * 0.5f; // Convert -1.0 to +1.0 -> 0.0 to 1.0
+  
+  // Apply a deadzone to avoid drift when triggers are not pressed
+  const float trigger_deadzone = 0.1f;
+  if (z_up_normalized < trigger_deadzone) z_up_normalized = 0.0f;
+  if (z_down_normalized > trigger_deadzone) z_down_normalized = 0.0f;
+  
+  // Calculate final Z velocity:
+  // RT pressed: +0.5, LT pressed: -0.5, nothing pressed: 0.0
+  float z_velocity = z_up_normalized + z_down_normalized;
+  
+  // Debug processed values
+  RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000, "Normalized - RT: %.3f, LT: %.3f, Z_vel: %.3f", z_up_normalized, z_down_normalized, z_velocity);
+  
+  // Apply velocity factor and set final Z velocity
+  twist_msg.linear.z = linear_velocity_factor * z_velocity;
 }
 
 std::pair<float, float> Joy2TwistNode::determine_velocity_factor(const MsgJoy::SharedPtr joy_msg)
