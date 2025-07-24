@@ -4,28 +4,18 @@
 
     linear_velocity_factor:
       fast: 1.0
-      regular: 0.5
+      regular: 1.0
       slow: 0.2
 
     angular_velocity_factor:
       fast: 1.0
-      regular: 0.5
+      regular: 1.0
       slow: 0.2
 
-    # This button mapping should be adjusted to the specific controller.
-    # The following map is suited for Xbox Series X/S Controller.
-    # Input declaration consists of:
-    # - optional negation '!',
-    # - input type: 'A' for an axis or 'B' for a button,
-    # - axis/button number.
     input_index_map:
       axis:
-        angular_z: "A2" # Right joystick
-        linear_x: "A1" # Left joystick
-        linear_y: "A0" # Left joystick
-        linear_z_up: "A4" # Right trigger (RT) - for going up
-        linear_z_down: "A5" # Left trigger (LT) - for going down
-      dead_man_switch: "B6" # LB
-      fast_mode: "B3" # Y button
-      slow_mode: "B0" # A button
-
+        angular_z: "A0"       # right joystick X (rotation / yaw)
+        linear_x: "A4"        # left joystick Y (forward / backward)
+        linear_y: "A3"        # left joystick X (left / right)
+        linear_z_up: "A1"     # left joystick Y (up / down)
+      dead_man_switch: "B4"   # L1

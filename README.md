@@ -205,3 +205,16 @@ To run the `joy2twist` container execute the following command on your PC in the
 ```bash
 docker compose -f compose.pc.yaml up
 ```
+
+
+# Local start:
+
+## In one terminal run :
+```bash
+ros2 run joy2twist joy2twist --ros-args --params-file ~/joy2twis_ws/src/joy2twist/joy2twist/config/joy2twist.yaml
+```
+
+## In second terminal run:
+```bash
+ros2 run joy_linux joy_linux_node --ros-args -p dev:=/dev/input/js2
+```
