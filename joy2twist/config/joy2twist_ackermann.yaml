@@ -1,0 +1,35 @@
+/**:
+  ros__parameters:
+    # Enable Ackermann steering mode
+    use_ackermann: true
+    ackermann_stamped: true
+    
+    # Wheelbase of the vehicle in meters (distance between front and rear axles)
+    # This should be adjusted based on your specific vehicle
+    wheelbase: 0.335  # Default value, adjust for your vehicle
+
+    # Velocity factors for different speed modes
+    linear_velocity_factor:
+      fast: 2.0      # Maximum speed in m/s
+      regular: 1.0   # Normal speed
+      slow: 0.5      # Slow speed
+
+    angular_velocity_factor:
+      fast: 1.5      # Maximum angular velocity factor
+      regular: 1.0   # Normal angular velocity factor
+      slow: 0.5      # Slow angular velocity factor
+
+    # This button mapping should be adjusted to the specific controller.
+    # The following map is suited for Logitech F710 in the DirectInput mode.
+    # Input declaration consists of:
+    # - optional negation '!',
+    # - input type: 'A' for an axis or 'B' for a button,
+    # - axis/button number.
+    input_index_map:
+      axis:
+        angular_z: "A2" # Right joystick (steering)
+        linear_x: "A1"  # Left joystick (speed/throttle)
+        linear_y: "A0"  # Left joystick (not used for Ackermann)
+      dead_man_switch: "B4" # LB - must be held to enable driving
+      fast_mode: "B7"       # RT - fast speed mode
+      slow_mode: "B5"       # RB - slow speed mode

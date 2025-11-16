@@ -14,12 +14,22 @@ Joy2TwistNode::Joy2TwistNode() : Node("joy2twist_node")
   joy_sub_ = create_subscription<MsgJoy>(
     "joy", rclcpp::SensorDataQoS(), std::bind(&Joy2TwistNode::joy_cb, this, _1));
 
-  if (cmd_vel_stamped_) {
-    twist_stamped_pub_ = create_publisher<MsgTwistStamped>(
-      "cmd_vel", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
+  if (use_ackermann_) {
+    if (ackermann_stamped_) {
+      ackermann_stamped_pub_ = create_publisher<MsgAckermannDriveStamped>(
+        "ackermann_cmd", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
+    } else {
+      ackermann_pub_ = create_publisher<MsgAckermannDrive>(
+        "ackermann_cmd", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
+    }
   } else {
-    twist_pub_ = create_publisher<MsgTwist>(
-      "cmd_vel", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
+    if (cmd_vel_stamped_) {
+      twist_stamped_pub_ = create_publisher<MsgTwistStamped>(
+        "cmd_vel", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
+    } else {
+      twist_pub_ = create_publisher<MsgTwist>(
+        "cmd_vel", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
+    }
   }
 
   if (e_stop_present_) {
@@ -36,6 +46,9 @@ Joy2TwistNode::Joy2TwistNode() : Node("joy2twist_node")
 void Joy2TwistNode::declare_parameters()
 {
   this->declare_parameter<bool>("cmd_vel_stamped", false);
+  this->declare_parameter<bool>("use_ackermann", false);
+  this->declare_parameter<bool>("ackermann_stamped", false);
+  this->declare_parameter<float>("wheelbase", 0.335);
 
   this->declare_parameter<float>("linear_velocity_factor.fast", 1.0);
   this->declare_parameter<float>("linear_velocity_factor.regular", 0.5);
@@ -65,6 +78,9 @@ void Joy2TwistNode::declare_parameters()
 void Joy2TwistNode::load_parameters()
 {
   this->get_parameter<bool>("cmd_vel_stamped", cmd_vel_stamped_);
+  this->get_parameter<bool>("use_ackermann", use_ackermann_);
+  this->get_parameter<bool>("ackermann_stamped", ackermann_stamped_);
+  this->get_parameter<float>("wheelbase", wheelbase_);
 
   this->get_parameter<float>("linear_velocity_factor.fast", linear_velocity_factors_[kFast]);
   this->get_parameter<float>("linear_velocity_factor.regular", linear_velocity_factors_[kRegular]);
@@ -154,17 +170,26 @@ void Joy2TwistNode::e_stop_cb(const MsgBool::SharedPtr bool_msg) { e_stop_state_
 
 void Joy2TwistNode::joy_cb(const MsgJoy::SharedPtr joy_msg)
 {
-  MsgTwist twist_msg;
-
   handle_e_stop(joy_msg);
 
   if (get_joy_input_as_btn(joy_msg, input_index_.dead_man_switch)) {
     driving_mode_ = true;
-    convert_joy_to_twist(joy_msg, twist_msg);
-    publish_twist(twist_msg);
+    if (use_ackermann_) {
+      MsgAckermannDrive ackermann_msg;
+      convert_joy_to_ackermann(joy_msg, ackermann_msg);
+      publish_ackermann(ackermann_msg);
+    } else {
+      MsgTwist twist_msg;
+      convert_joy_to_twist(joy_msg, twist_msg);
+      publish_twist(twist_msg);
+    }
   } else if (driving_mode_) {
     driving_mode_ = false;
-    publish_twist(twist_msg);
+    if (use_ackermann_) {
+      publish_ackermann(MsgAckermannDrive());
+    } else {
+      publish_twist(MsgTwist());
+    }
   }
 }
 
@@ -283,6 +308,49 @@ void Joy2TwistNode::handle_e_stop(const std::shared_ptr<MsgJoy> joy_msg)
     get_joy_input_as_btn(joy_msg, input_index_.enable_e_stop_reset) &&
     get_joy_input_as_btn(joy_msg, input_index_.e_stop_reset) && e_stop_state_) {
     call_trigger_service(e_stop_reset_client_);
+  }
+}
+
+void Joy2TwistNode::convert_joy_to_ackermann(
+  const MsgJoy::SharedPtr joy_msg, MsgAckermannDrive & ackermann_msg)
+{
+  float linear_velocity_factor{}, angular_velocity_factor{};
+  std::tie(linear_velocity_factor, angular_velocity_factor) = determine_velocity_factor(joy_msg);
+
+  // Get linear velocity (speed)
+  float speed = linear_velocity_factor * get_joy_input(joy_msg, input_index_.linear_x);
+  ackermann_msg.speed = speed;
+
+  // Convert angular velocity to steering angle using Ackermann geometry
+  // steering_angle = atan(angular_velocity * wheelbase / linear_velocity)
+  // For low speeds or zero velocity, use angular input directly scaled
+  float angular_z = angular_velocity_factor * get_joy_input(joy_msg, input_index_.angular_z);
+  
+  if (std::abs(speed) > 0.01) {
+    // Calculate steering angle from desired angular velocity
+    ackermann_msg.steering_angle = std::atan(angular_z * wheelbase_ / speed);
+  } else {
+    // At low/zero speed, scale angular input to steering angle
+    // Assuming max angular velocity of 1.0 rad/s corresponds to max steering angle
+    ackermann_msg.steering_angle = angular_z * 0.5;  // Scale factor for direct mapping
+  }
+
+  // Set acceleration and other fields to zero (can be configured later)
+  ackermann_msg.steering_angle_velocity = 0.0;
+  ackermann_msg.acceleration = 0.0;
+  ackermann_msg.jerk = 0.0;
+}
+
+void Joy2TwistNode::publish_ackermann(const MsgAckermannDrive & ackermann_msg)
+{
+  if (ackermann_stamped_) {
+    MsgAckermannDriveStamped ackermann_stamped_msg;
+    ackermann_stamped_msg.header.stamp = this->get_clock()->now();
+    ackermann_stamped_msg.header.frame_id = "base_link";
+    ackermann_stamped_msg.drive = ackermann_msg;
+    ackermann_stamped_pub_->publish(ackermann_stamped_msg);
+  } else {
+    ackermann_pub_->publish(ackermann_msg);
   }
 }
 
