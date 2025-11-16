@@ -17,10 +17,10 @@ Joy2TwistNode::Joy2TwistNode() : Node("joy2twist_node")
   if (use_ackermann_) {
     if (ackermann_stamped_) {
       ackermann_stamped_pub_ = create_publisher<MsgAckermannDriveStamped>(
-        "ackermann_cmd", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
+        "base_footprint/ackerman_vel", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
     } else {
       ackermann_pub_ = create_publisher<MsgAckermannDrive>(
-        "ackermann_cmd", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
+        "base_footprint/ackerman_vel", rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable());
     }
   } else {
     if (cmd_vel_stamped_) {

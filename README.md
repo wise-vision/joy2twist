@@ -109,6 +109,55 @@ Usage of triggers as buttons may require inverting the axis with a negation sign
 
 For reference, see the [default DirectInput config file](./joy2twist/config/joy2twist.yaml) and the [Husarion UGV (XInput) config file](./joy2twist/config/joy2twist_ugv.yaml).
 
+## Usage
+
+### Running with standard Twist output
+
+```bash
+# Build the package
+cd ~/ros2_ws
+colcon build --packages-select joy2twist
+
+# Source the workspace
+source install/setup.bash
+
+# Run joy node (in one terminal)
+ros2 run joy_linux joy_linux_node
+
+# Run joy2twist node with default config (in another terminal)
+ros2 run joy2twist joy2twist --ros-args --params-file src/joy2twist/joy2twist/config/joy2twist.yaml
+```
+
+### Running with Ackermann steering output
+
+```bash
+# Build the package
+cd ~/ros2_ws
+colcon build --packages-select joy2twist
+
+# Source the workspace
+source install/setup.bash
+
+# Run joy node (in one terminal)
+ros2 run joy_linux joy_linux_node
+
+# Run joy2twist node with Ackermann config (in another terminal)
+ros2 run joy2twist joy2twist --ros-args --params-file src/joy2twist/joy2twist/config/joy2twist_ackermann.yaml
+
+# The node will publish to /base_footprint/ackerman_vel topic with ackermann_msgs/msg/AckermannDriveStamped
+```
+
+### Ackermann Parameters
+
+When using Ackermann mode, configure these additional parameters in your config file:
+
+- `~use_ackermann` *(bool, default: false)* - Enable Ackermann steering mode
+- `~ackermann_stamped` *(bool, default: false)* - Publish stamped Ackermann messages
+- `~wheelbase` *(float, default: 0.335)* - Vehicle wheelbase in meters (distance between front and rear axles)
+
+The published topic will be:
+- `/base_footprint/ackerman_vel` *(ackermann_msgs/AckermannDrive or ackermann_msgs/AckermannDriveStamped)*
+
 ## Docker image
 
 [![Build/Publish Docker Image](https://github.com/husarion/joy2twist/actions/workflows/ros-docker-image.yaml/badge.svg)](https://github.com/husarion/joy2twist/actions/workflows/ros-docker-image.yaml)

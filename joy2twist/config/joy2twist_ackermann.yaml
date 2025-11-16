@@ -2,7 +2,7 @@
   ros__parameters:
     # Enable Ackermann steering mode
     use_ackermann: true
-    ackermann_stamped: true
+    ackermann_stamped: false
     
     # Wheelbase of the vehicle in meters (distance between front and rear axles)
     # This should be adjusted based on your specific vehicle
@@ -30,6 +30,6 @@
         angular_z: "A2" # Right joystick (steering)
         linear_x: "A1"  # Left joystick (speed/throttle)
         linear_y: "A0"  # Left joystick (not used for Ackermann)
-      dead_man_switch: "B4" # LB - must be held to enable driving
+      dead_man_switch: "B6" # LB - must be held to enable driving
       fast_mode: "B7"       # RT - fast speed mode
       slow_mode: "B5"       # RB - slow speed mode
